@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>omp · skill usage</title>
+<style>
+  :root {
+    --bg: #1c1d19;
+    --panel: #26271f;
+    --panel-2: #2f312a;
+    --line: #3b3d33;
+    --fg: #f8f8f2;
+    --dim: #9a9b8f;
+    --accent: #a6e22e;   /* green  */
+    --cyan: #66d9ef;
+    --orange: #fd971f;
+    --pink: #f92672;
+    --radius: 12px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 24px clamp(16px, 4vw, 48px) 80px;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+  a { color: var(--cyan); }
+  h1 { font-size: 20px; margin: 0; letter-spacing: .2px; }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); margin: 0 0 14px; font-weight: 600; }
+  .mono { font-family: var(--mono); }
+  .dim { color: var(--dim); }
+
+  header.top {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  header.top .grow { flex: 1; min-width: 160px; }
+  header.top .sub { color: var(--dim); font-size: 12.5px; margin-top: 2px; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  button, select, .filebtn {
+    background: var(--panel-2); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 12px; font-size: 13px; cursor: pointer;
+    font-family: var(--sans);
+  }
+  button:hover, select:hover, .filebtn:hover { border-color: var(--accent); }
+  button.active { background: var(--accent); color: #1c1d19; border-color: var(--accent); font-weight: 600; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; }
+  .seg button + button { border-left: 1px solid var(--line); }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
+  .card .v { font-size: 30px; font-weight: 700; font-family: var(--mono); line-height: 1.1; }
+  .card .l { color: var(--dim); font-size: 12px; margin-top: 6px; text-transform: uppercase; letter-spacing: .6px; }
+  .card .v.green { color: var(--accent); }
+  .card .v.cyan { color: var(--cyan); }
+  .card .v.orange { color: var(--orange); }
+
+  .grid2 { display: grid; grid-template-columns: 1.1fr .9fr; gap: 20px; align-items: start; }
+  @media (max-width: 880px) { .grid2 { grid-template-columns: 1fr; } }
+  section.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .panel-head h2 { margin: 0; }
+
+  /* horizontal bar list */
+  .bars { display: flex; flex-direction: column; gap: 9px; }
+  .bar-row { display: grid; grid-template-columns: minmax(110px, 34%) 1fr auto; align-items: center; gap: 12px; }
+  .bar-row .name { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { background: var(--panel-2); border-radius: 6px; height: 18px; overflow: hidden; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #cdee6b); border-radius: 6px; transition: width .5s ease; min-width: 2px; }
+  .bar-row .val { font-family: var(--mono); font-size: 12.5px; color: var(--dim); min-width: 28px; text-align: right; }
+
+  /* time series */
+  .spark { display: flex; align-items: flex-end; gap: 2px; height: 120px; }
+  .spark .b { flex: 1; min-width: 3px; background: var(--cyan); border-radius: 2px 2px 0 0; transition: height .4s ease; opacity: .85; }
+  .spark .b:hover { opacity: 1; background: var(--accent); }
+  .axis { display: flex; justify-content: space-between; color: var(--dim); font-size: 11px; margin-top: 6px; font-family: var(--mono); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--dim); font-weight: 600; cursor: pointer; user-select: none; white-space: nowrap; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  th:hover { color: var(--fg); }
+  th.sorted::after { content: " \25BE"; color: var(--accent); }
+  th.sorted.asc::after { content: " \25B4"; color: var(--accent); }
+  td.num, th.num { text-align: right; font-family: var(--mono); }
+  td .skill { font-family: var(--mono); color: var(--fg); }
+  tr.stale td { color: var(--orange); }
+  tbody tr:hover td { background: var(--panel-2); }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 99px; font-size: 11px; font-family: var(--mono); background: var(--panel-2); border: 1px solid var(--line); }
+  .pill.warn { color: var(--orange); border-color: var(--orange); }
+
+  input[type=search], textarea {
+    background: var(--panel-2); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 7px 10px; font-family: var(--sans); font-size: 13px; width: 100%;
+  }
+  textarea { font-family: var(--mono); min-height: 90px; resize: vertical; }
+
+  /* loader / empty state */
+  #drop {
+    border: 2px dashed var(--line); border-radius: var(--radius); padding: 48px 24px; text-align: center;
+    color: var(--dim); cursor: pointer; transition: .2s;
+  }
+  #drop.hot { border-color: var(--accent); color: var(--fg); background: var(--panel); }
+  #drop strong { color: var(--fg); }
+  .hidden { display: none !important; }
+  .empty { color: var(--dim); padding: 18px 0; text-align: center; }
+  code.k { background: var(--panel-2); padding: 1px 6px; border-radius: 5px; font-family: var(--mono); font-size: 12px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="grow">
+    <h1>skill usage <span class="dim">·</span> <span class="dim mono" style="font-size:14px;font-weight:400">omp</span></h1>
+    <div class="sub" id="source">no data loaded</div>
+  </div>
+  <div class="controls">
+    <div class="seg" id="rangeSeg">
+      <button data-range="all" class="active">All</button>
+      <button data-range="30">30d</button>
+      <button data-range="7">7d</button>
+    </div>
+    <label class="filebtn">load csv<input id="file" type="file" accept=".csv,text/csv" class="hidden" /></label>
+    <button id="reload" title="Re-fetch ./skill-usage.csv">reload</button>
+  </div>
+</header>
+
+<!-- Loader shown until data is available -->
+<div id="drop">
+  <p style="font-size:16px;margin:0 0 8px"><strong>Drop <code class="k">skill-usage.csv</code> here</strong> or click to choose a file</p>
+  <p style="margin:0">Tip: serve this folder (<code class="k">python3 -m http.server</code> in <code class="k">~/.omp</code>) and it auto-loads the sibling CSV.</p>
+  <p id="loadErr" class="hidden" style="color:var(--orange);margin-top:12px"></p>
+</div>
+
+<!-- Dashboard, hidden until data is loaded -->
+<main id="dash" class="hidden">
+  <div class="cards" id="cards"></div>
+
+  <div class="grid2">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Top skills</h2>
+        <div class="seg" id="metricSeg">
+          <button data-metric="sessions" class="active">by sessions</button>
+          <button data-metric="reads">by reads</button>
+        </div>
+      </div>
+      <div class="bars" id="topBars"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Reads over time</h2>
+      <div class="spark" id="spark"></div>
+      <div class="axis" id="sparkAxis"></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>All skills</h2>
+      <input id="skillFilter" type="search" placeholder="filter skills…" style="max-width:240px" />
+    </div>
+    <div style="overflow-x:auto">
+      <table id="skillTable">
+        <thead><tr>
+          <th data-key="skill">skill</th>
+          <th data-key="reads" class="num">reads</th>
+          <th data-key="sessions" class="num">sessions</th>
+          <th data-key="projects" class="num">projects</th>
+          <th data-key="first">first used</th>
+          <th data-key="last">last used</th>
+          <th data-key="idle" class="num">days idle</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="dim" style="font-size:12px;margin:12px 0 0">Sort by <b>sessions</b> to see what's used most; by <b>days idle</b> to surface deletion candidates. Rows idle &gt; 30 days are highlighted.</p>
+  </section>
+
+  <div class="grid2">
+    <section class="panel">
+      <h2>Never used — deletion candidates</h2>
+      <p class="dim" style="font-size:12.5px;margin:0 0 10px">Paste your full skill roster (any separators). Skills absent from the CSV appear below.</p>
+      <textarea id="roster" placeholder="brainstorming, systematic-debugging, hyperframes, …"></textarea>
+      <div id="neverUsed" style="margin-top:12px"></div>
+    </section>
+
+    <section class="panel">
+      <h2>By project</h2>
+      <div style="overflow-x:auto">
+        <table id="projTable">
+          <thead><tr>
+            <th data-key="project">project (cwd)</th>
+            <th data-key="reads" class="num">reads</th>
+            <th data-key="skills" class="num">skills</th>
+            <th data-key="top">top skill</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+// ---------- CSV (RFC-4180-ish: quoted fields, "" escapes, commas/newlines in quotes) ----------
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
+      else field += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(field); field = ""; }
+    else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ""; }
+    else if (c !== '\r') field += c;
+  }
+  if (field.length || row.length > 1 || (row.length === 1 && row[0] !== "")) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+function toRecords(text) {
+  const rows = parseCSV(text).filter(r => r.length && r.some(c => c !== ""));
+  if (!rows.length) return [];
+  const head = rows[0].map(h => h.trim());
+  const idx = name => head.indexOf(name);
+  const iTs = idx("timestamp"), iSkill = idx("skill"), iPath = idx("path"), iSess = idx("session"), iCwd = idx("cwd");
+  if (iTs < 0 || iSkill < 0) throw new Error('CSV missing required "timestamp"/"skill" columns');
+  const out = [];
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    const ts = new Date(row[iTs]);
+    const skill = (row[iSkill] || "").trim();
+    if (!skill || isNaN(+ts)) continue;
+    out.push({
+      ts,
+      skill,
+      path: iPath >= 0 ? row[iPath] : "",
+      session: iSess >= 0 ? (row[iSess] || "") : "",
+      cwd: iCwd >= 0 ? (row[iCwd] || "") : "",
+    });
+  }
+  return out;
+}
+
+// ---------- state ----------
+const state = { all: [], range: "all", metric: "sessions", sort: { key: "sessions", dir: -1 }, projSort: { key: "reads", dir: -1 }, filter: "" };
+
+const dayKey = d => d.toISOString().slice(0, 10);
+const DAY = 86400000;
+function relDays(d, now) { return Math.floor((now - d) / DAY); }
+function fmtDate(d) { return d.toISOString().slice(0, 10); }
+function lastSeg(p) { if (!p) return "(unknown)"; const s = p.replace(/\/+$/, "").split("/"); return s[s.length - 1] || p; }
+
+function filtered() {
+  if (state.range === "all") return state.all;
+  const cut = Date.now() - (+state.range) * DAY;
+  return state.all.filter(r => +r.ts >= cut);
+}
+
+// ---------- analytics ----------
+function aggregate(records) {
+  const skills = new Map();   // skill -> {reads, sessions:Set, projects:Set, first, last}
+  const sessions = new Set();
+  const days = new Map();     // dayKey -> reads
+  const projects = new Map(); // cwd  -> {reads, skills:Map(skill->count)}
+  let min = Infinity, max = -Infinity;
+
+  for (const r of records) {
+    let s = skills.get(r.skill);
+    if (!s) { s = { skill: r.skill, reads: 0, sessions: new Set(), projects: new Set(), first: r.ts, last: r.ts }; skills.set(r.skill, s); }
+    s.reads++;
+    if (r.session) s.sessions.add(r.session);
+    if (r.cwd) s.projects.add(r.cwd);
+    if (r.ts < s.first) s.first = r.ts;
+    if (r.ts > s.last) s.last = r.ts;
+
+    if (r.session) sessions.add(r.session);
+    const dk = dayKey(r.ts); days.set(dk, (days.get(dk) || 0) + 1);
+    const pk = r.cwd || "(unknown)";
+    let p = projects.get(pk); if (!p) { p = { project: pk, reads: 0, skills: new Map() }; projects.set(pk, p); }
+    p.reads++; p.skills.set(r.skill, (p.skills.get(r.skill) || 0) + 1);
+
+    if (+r.ts < min) min = +r.ts; if (+r.ts > max) max = +r.ts;
+  }
+
+  const skillRows = [...skills.values()].map(s => ({
+    skill: s.skill, reads: s.reads, sessions: s.sessions.size, projects: s.projects.size,
+    first: s.first, last: s.last,
+  }));
+  const projRows = [...projects.values()].map(p => {
+    let top = "", topN = -1;
+    for (const [k, n] of p.skills) if (n > topN) { topN = n; top = k; }
+    return { project: p.project, reads: p.reads, skills: p.skills.size, top };
+  });
+
+  return {
+    total: records.length,
+    skillRows, projRows,
+    uniqueSkills: skills.size,
+    uniqueSessions: sessions.size,
+    days,
+    min: min === Infinity ? null : new Date(min),
+    max: max === -Infinity ? null : new Date(max),
+  };
+}
+
+// ---------- render ----------
+const $ = sel => document.querySelector(sel);
+
+function render() {
+  const data = aggregate(filtered());
+  $("#dash").classList.remove("hidden");
+  $("#drop").classList.add("hidden");
+  renderCards(data);
+  renderTopBars(data);
+  renderSpark(data);
+  renderSkillTable(data);
+  renderProjTable(data);
+  renderNeverUsed(data);
+}
+
+function renderCards(d) {
+  const span = d.min && d.max ? `${fmtDate(d.min)} → ${fmtDate(d.max)}` : "—";
+  const days = d.min && d.max ? Math.max(1, Math.round((d.max - d.min) / DAY) + 1) : 0;
+  $("#cards").innerHTML = [
+    ["green", d.total, "skill reads"],
+    ["cyan", d.uniqueSkills, "unique skills"],
+    ["orange", d.uniqueSessions, "unique sessions"],
+    ["", span, days ? days + " day span" : "date range"],
+  ].map(([cls, v, l]) => `<div class="card"><div class="v ${cls}">${v}</div><div class="l">${l}</div></div>`).join("");
+}
+
+function renderTopBars(d) {
+  const m = state.metric;
+  const rows = [...d.skillRows].sort((a, b) => b[m] - a[m] || a.skill.localeCompare(b.skill)).slice(0, 12);
+  const max = rows.length ? rows[0][m] : 1;
+  $("#topBars").innerHTML = rows.length ? rows.map(r => `
+    <div class="bar-row">
+      <span class="name" title="${esc(r.skill)}">${esc(r.skill)}</span>
+      <span class="bar-track"><span class="bar-fill" style="width:${Math.max(2, (r[m] / max) * 100)}%"></span></span>
+      <span class="val">${r[m]}</span>
+    </div>`).join("") : `<div class="empty">no data</div>`;
+}
+
+function renderSpark(d) {
+  if (!d.min || !d.max) { $("#spark").innerHTML = `<div class="empty">no data</div>`; $("#sparkAxis").innerHTML = ""; return; }
+  const keys = [];
+  for (let t = +new Date(dayKey(d.min)); t <= +new Date(dayKey(d.max)); t += DAY) keys.push(dayKey(new Date(t)));
+  const max = Math.max(1, ...keys.map(k => d.days.get(k) || 0));
+  $("#spark").innerHTML = keys.map(k => {
+    const v = d.days.get(k) || 0;
+    return `<span class="b" style="height:${(v / max) * 100}%" title="${k}: ${v} read${v === 1 ? "" : "s"}"></span>`;
+  }).join("");
+  $("#sparkAxis").innerHTML = `<span>${keys[0]}</span><span>peak ${max}/day</span><span>${keys[keys.length - 1]}</span>`;
+}
+
+function renderSkillTable(d) {
+  const now = Date.now();
+  let rows = d.skillRows.map(r => ({ ...r, idle: relDays(r.last, now) }));
+  if (state.filter) { const f = state.filter.toLowerCase(); rows = rows.filter(r => r.skill.toLowerCase().includes(f)); }
+  const { key, dir } = state.sort;
+  rows.sort((a, b) => {
+    let x = a[key], y = b[key];
+    if (key === "first" || key === "last") { x = +a[key]; y = +b[key]; }
+    if (typeof x === "string") return x.localeCompare(y) * dir;
+    return (x - y) * dir;
+  });
+  const body = rows.map(r => `
+    <tr class="${r.idle > 30 ? "stale" : ""}">
+      <td><span class="skill">${esc(r.skill)}</span></td>
+      <td class="num">${r.reads}</td>
+      <td class="num">${r.sessions}</td>
+      <td class="num">${r.projects}</td>
+      <td class="mono dim">${fmtDate(r.first)}</td>
+      <td class="mono dim">${fmtDate(r.last)}</td>
+      <td class="num">${r.idle > 30 ? `<span class="pill warn">${r.idle}</span>` : r.idle}</td>
+    </tr>`).join("");
+  $("#skillTable tbody").innerHTML = body || `<tr><td colspan="7" class="empty">no skills match</td></tr>`;
+  markSorted("#skillTable", state.sort);
+}
+
+function renderProjTable(d) {
+  const { key, dir } = state.projSort;
+  const rows = [...d.projRows].map(p => ({ ...p, label: lastSeg(p.project) }));
+  rows.sort((a, b) => { let x = a[key === "project" ? "label" : key], y = b[key === "project" ? "label" : key]; return typeof x === "string" ? x.localeCompare(y) * dir : (x - y) * dir; });
+  $("#projTable tbody").innerHTML = rows.length ? rows.map(p => `
+    <tr>
+      <td><span class="mono" title="${esc(p.project)}">${esc(p.label)}</span></td>
+      <td class="num">${p.reads}</td>
+      <td class="num">${p.skills}</td>
+      <td><span class="skill">${esc(p.top)}</span></td>
+    </tr>`).join("") : `<tr><td colspan="4" class="empty">no data</td></tr>`;
+  markSorted("#projTable", state.projSort);
+}
+
+function renderNeverUsed(d) {
+  const used = new Set(d.skillRows.map(r => r.skill));
+  const raw = $("#roster").value.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
+  const roster = [...new Set(raw)];
+  const el = $("#neverUsed");
+  if (!roster.length) { el.innerHTML = `<span class="dim">…</span>`; return; }
+  const never = roster.filter(s => !used.has(s)).sort();
+  if (!never.length) { el.innerHTML = `<span style="color:var(--accent)">✓ all ${roster.length} listed skills have been used</span>`; return; }
+  el.innerHTML = `<div class="dim" style="font-size:12px;margin-bottom:8px">${never.length} of ${roster.length} never used:</div>` +
+    never.map(s => `<span class="pill warn" style="margin:0 6px 6px 0">${esc(s)}</span>`).join("");
+}
+
+function markSorted(tableSel, sort) {
+  document.querySelectorAll(`${tableSel} th`).forEach(th => {
+    th.classList.toggle("sorted", th.dataset.key === sort.key);
+    th.classList.toggle("asc", th.dataset.key === sort.key && sort.dir === 1);
+  });
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+// ---------- loading ----------
+function load(text, sourceLabel) {
+  let records;
+  try { records = toRecords(text); }
+  catch (e) { return showLoadError(e.message); }
+  if (!records.length) return showLoadError("No usable rows found in the CSV.");
+  state.all = records;
+  $("#source").innerHTML = `${esc(sourceLabel)} · <b>${records.length}</b> reads · ${state.all.length ? `${new Set(records.map(r => r.skill)).size} skills` : ""}`;
+  render();
+}
+
+function showLoadError(msg) {
+  $("#dash").classList.add("hidden");
+  $("#drop").classList.remove("hidden");
+  const e = $("#loadErr"); e.textContent = "⚠ " + msg; e.classList.remove("hidden");
+}
+
+async function tryFetch() {
+  try {
+    const res = await fetch("./skill-usage.csv", { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    load(await res.text(), "./skill-usage.csv");
+  } catch (e) {
+    // file:// fetch is blocked by browsers — fall back to drop/picker silently
+    $("#source").textContent = "drop or choose skill-usage.csv to begin";
+  }
+}
+
+function readFile(file) {
+  const fr = new FileReader();
+  fr.onload = () => load(String(fr.result), file.name);
+  fr.onerror = () => showLoadError("Could not read file.");
+  fr.readAsText(file);
+}
+
+// ---------- events ----------
+document.addEventListener("DOMContentLoaded", () => {
+  $("#file").addEventListener("change", e => { if (e.target.files[0]) readFile(e.target.files[0]); });
+  $("#reload").addEventListener("click", tryFetch);
+
+  const drop = $("#drop");
+  drop.addEventListener("click", () => $("#file").click());
+  ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("hot"); }));
+  ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("hot"); }));
+  drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) readFile(f); });
+  // allow dropping anywhere once loaded
+  document.addEventListener("dragover", e => e.preventDefault());
+  document.addEventListener("drop", e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) readFile(f); });
+
+  $("#rangeSeg").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    state.range = b.dataset.range;
+    document.querySelectorAll("#rangeSeg button").forEach(x => x.classList.toggle("active", x === b));
+    if (state.all.length) render();
+  });
+  $("#metricSeg").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    state.metric = b.dataset.metric;
+    document.querySelectorAll("#metricSeg button").forEach(x => x.classList.toggle("active", x === b));
+    if (state.all.length) renderTopBars(aggregate(filtered()));
+  });
+  $("#skillFilter").addEventListener("input", e => { state.filter = e.target.value; if (state.all.length) renderSkillTable(aggregate(filtered())); });
+  $("#roster").addEventListener("input", () => { if (state.all.length) renderNeverUsed(aggregate(filtered())); });
+
+  document.querySelectorAll("#skillTable th").forEach(th => th.addEventListener("click", () => {
+    const k = th.dataset.key;
+    state.sort = { key: k, dir: state.sort.key === k ? -state.sort.dir : (k === "skill" || k === "first" || k === "last" ? 1 : -1) };
+    if (state.all.length) renderSkillTable(aggregate(filtered()));
+  }));
+  document.querySelectorAll("#projTable th").forEach(th => th.addEventListener("click", () => {
+    const k = th.dataset.key;
+    state.projSort = { key: k, dir: state.projSort.key === k ? -state.projSort.dir : (k === "project" || k === "top" ? 1 : -1) };
+    if (state.all.length) renderProjTable(aggregate(filtered()));
+  }));
+
+  tryFetch();
+});
+</script>
+</body>
+</html>
